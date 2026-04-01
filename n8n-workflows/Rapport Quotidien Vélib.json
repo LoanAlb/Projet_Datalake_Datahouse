@@ -1,0 +1,107 @@
+{
+  "name": "Rapport Quotidien Vélib",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Chaque matin 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "7548e38b-24ef-46ee-a325-10c2fa7d2d70"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT total_stations, total_bikes, total_docks, stations_quasi_vides, stations_quasi_pleines, avg_occupancy_pct FROM v_global_summary;",
+        "options": {}
+      },
+      "name": "Résumé global",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "id": "a129db63-d404-46fb-9168-0bd1de55f645",
+      "credentials": {
+        "postgres": {
+          "id": "7sFMAYG2cRFTXj2Q",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "-5297129651",
+        "text": "=☀️ Rapport Vélib du jour\n\n🏢 Stations : {{ $json.total_stations }}\n🚲 Vélos dispo : {{ $json.total_bikes }}\n🅿️ Docks libres : {{ $json.total_docks }}\n🔴 Quasi vides : {{ $json.stations_quasi_vides }}\n🟠 Quasi pleines : {{ $json.stations_quasi_pleines }}\n📈 Occupation moy : {{ $json.avg_occupancy_pct }}%",
+        "additionalFields": {
+          "parse_mode": "=None"
+        }
+      },
+      "name": "Rapport Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        464,
+        0
+      ],
+      "id": "c6723061-eee6-49ee-8f2f-aeec6f7718d7",
+      "webhookId": "eb2de957-5816-46d7-a7f0-9a0a3be394b0",
+      "credentials": {
+        "telegramApi": {
+          "id": "Qgo6JMjVTBMRAbKh",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Chaque matin 8h": {
+      "main": [
+        [
+          {
+            "node": "Résumé global",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Résumé global": {
+      "main": [
+        [
+          {
+            "node": "Rapport Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "75c818c9-b260-4b0e-aa60-7ae2a224aa7d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "700682f1f689ed17217dbd33ab92b26c984b7e4d21d42e88954492667708274c"
+  },
+  "id": "sQc9rzsEQ9rKmqZg",
+  "tags": []
+}

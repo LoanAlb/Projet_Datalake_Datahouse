@@ -1,0 +1,137 @@
+{
+  "name": "Alerte Stations Critiques",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "name": "Toutes les 5 min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        464
+      ],
+      "id": "07ee1443-e24c-48bf-9089-f53689044a12"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT name, commune, occupancy_pct, alert_type FROM v_critical_stations ORDER BY occupancy_pct ASC LIMIT 10;",
+        "options": {}
+      },
+      "name": "Stations critiques",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -192,
+        464
+      ],
+      "id": "e1214151-98f8-4603-9e83-db6903c40697",
+      "credentials": {
+        "postgres": {
+          "id": "7sFMAYG2cRFTXj2Q",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.name }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "name": "Si résultats",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        48,
+        464
+      ],
+      "id": "90b7548d-55a5-45e2-85de-b4a7b2b1bf82"
+    },
+    {
+      "parameters": {
+        "chatId": "-5297129651",
+        "text": "=🚨 Station critique\n{{ $json[\"name\"] }}\nOccupation: {{ $json[\"occupancy_pct\"] }}%\nAlerte: {{ $json[\"alert_type\"] }}",
+        "additionalFields": {
+          "parse_mode": "=None"
+        }
+      },
+      "name": "Alerte Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        256,
+        352
+      ],
+      "id": "ec6da908-87e9-4584-96c7-c27b8a001065",
+      "webhookId": "41964815-39b4-442a-a768-53b055dca4cb",
+      "credentials": {
+        "telegramApi": {
+          "id": "Qgo6JMjVTBMRAbKh",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Toutes les 5 min": {
+      "main": [
+        [
+          {
+            "node": "Stations critiques",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stations critiques": {
+      "main": [
+        [
+          {
+            "node": "Si résultats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Si résultats": {
+      "main": [
+        [
+          {
+            "node": "Alerte Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "4c1c8757-e437-414d-a469-2c520470eaff",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "700682f1f689ed17217dbd33ab92b26c984b7e4d21d42e88954492667708274c"
+  },
+  "id": "Qnq9svcN8PHEmJOO",
+  "tags": []
+}

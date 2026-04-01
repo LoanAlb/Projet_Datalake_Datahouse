@@ -1,0 +1,279 @@
+{
+  "name": "Bot Telegram Vélib",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        208
+      ],
+      "id": "5a603beb-f8f8-4f47-823e-fb26621fed56",
+      "webhookId": "ac163bc7-4b33-443c-aedf-bad4219949b3",
+      "credentials": {
+        "telegramApi": {
+          "id": "Qgo6JMjVTBMRAbKh",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "=={{ $json.message.text }}",
+        "rules": {
+          "rules": [
+            {
+              "operation": "contains",
+              "value2": "==/kpi"
+            },
+            {
+              "operation": "contains",
+              "value2": "==/top_critiques",
+              "output": 1
+            },
+            {
+              "operation": "contains",
+              "value2": "==/station",
+              "output": 2
+            }
+          ]
+        }
+      },
+      "name": "Commande",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        208
+      ],
+      "id": "c75aea0a-1ccb-4df7-b905-e7b679e29c0a"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT total_stations, total_bikes, total_docks, stations_quasi_vides, stations_quasi_pleines, avg_occupancy_pct FROM v_global_summary;",
+        "options": {}
+      },
+      "name": "Query KPI",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "99e992d5-cb3a-44fb-9620-5edcb251e8d5",
+      "credentials": {
+        "postgres": {
+          "id": "7sFMAYG2cRFTXj2Q",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "-5297129651",
+        "text": "=📊 KPI Vélib\nStations: {{ $json[\"total_stations\"] }}\nVélos dispo: {{ $json[\"total_bikes\"] }}\nDocks libres: {{ $json[\"total_docks\"] }}\nQuasi vides: {{ $json[\"stations_quasi_vides\"] }}\nQuasi pleines: {{ $json[\"stations_quasi_pleines\"] }}\nOccupation moy: {{ $json[\"avg_occupancy_pct\"] }}%\n",
+        "additionalFields": {
+          "parse_mode": "=None"
+        }
+      },
+      "name": "Réponse KPI",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        240,
+        0
+      ],
+      "id": "f822ae35-361b-471e-92e6-2df1b5421b62",
+      "webhookId": "cd275f67-6010-45c4-bed3-9a5fe0181af5",
+      "credentials": {
+        "telegramApi": {
+          "id": "Qgo6JMjVTBMRAbKh",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT name, commune, occupancy_pct, alert_type FROM v_critical_stations ORDER BY occupancy_pct ASC LIMIT 10;",
+        "options": {}
+      },
+      "name": "Query Top Critiques",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        0,
+        208
+      ],
+      "id": "e516f905-51b3-46af-9924-065b1dca18e9",
+      "credentials": {
+        "postgres": {
+          "id": "7sFMAYG2cRFTXj2Q",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "-5297129651",
+        "text": "=🚨 {{ $json[\"name\"] }} {{ $json[\"occupancy_pct\"] }}% {{ $json[\"alert_type\"] }}",
+        "additionalFields": {
+          "parse_mode": "=None"
+        }
+      },
+      "name": "Réponse Top Critiques",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        240,
+        208
+      ],
+      "id": "3a2e8230-277e-4423-b770-822a37ae38e4",
+      "webhookId": "3a05467f-732d-43e5-8798-dc6d701a12c8",
+      "credentials": {
+        "telegramApi": {
+          "id": "Qgo6JMjVTBMRAbKh",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT name, num_bikes_available, num_docks_available, mechanical_available, ebike_available, occupancy_pct FROM v_station_occupancy WHERE LOWER(name) LIKE '%' || LOWER('{{ $json.message.text.replace(\"/station \", \"\") }}') || '%' LIMIT 1;",
+        "options": {}
+      },
+      "name": "Query Station",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        0,
+        400
+      ],
+      "id": "a4bf8a08-4680-4050-a3e9-1f51df14889a",
+      "credentials": {
+        "postgres": {
+          "id": "7sFMAYG2cRFTXj2Q",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "-5297129651",
+        "text": "=📍 {{ $json[\"name\"] }}\nVélos: {{ $json[\"num_bikes_available\"] }}\nMéca: {{ $json[\"mechanical_available\"] }}\nÉlec: {{ $json[\"ebike_available\"] }}\nDocks: {{ $json[\"num_docks_available\"] }}\nOccupation: {{ $json[\"occupancy_pct\"] }}%",
+        "additionalFields": {
+          "parse_mode": "=None"
+        }
+      },
+      "name": "Réponse Station",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        240,
+        400
+      ],
+      "id": "1b8d75eb-5ef7-4361-94d3-3e27ba0edf01",
+      "webhookId": "a4f0bd27-bd5b-4484-9e67-4f1e22c8594c",
+      "credentials": {
+        "telegramApi": {
+          "id": "Qgo6JMjVTBMRAbKh",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Commande",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Commande": {
+      "main": [
+        [
+          {
+            "node": "Query KPI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Query Top Critiques",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Query Station",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query KPI": {
+      "main": [
+        [
+          {
+            "node": "Réponse KPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Top Critiques": {
+      "main": [
+        [
+          {
+            "node": "Réponse Top Critiques",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Station": {
+      "main": [
+        [
+          {
+            "node": "Réponse Station",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "45a674fd-c923-43ee-a699-1147e4f1a088",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "700682f1f689ed17217dbd33ab92b26c984b7e4d21d42e88954492667708274c"
+  },
+  "id": "gyeL4ivU43Af8GDq",
+  "tags": []
+}
