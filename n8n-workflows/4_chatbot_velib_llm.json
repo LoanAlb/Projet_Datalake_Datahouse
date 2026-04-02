@@ -3,22 +3,39 @@
   "nodes": [
     {
       "parameters": {
-        "updates": ["message"]
+        "updates": ["message"],
+        "additionalFields": {}
       },
       "name": "Telegram Trigger",
       "type": "n8n-nodes-base.telegramTrigger",
       "typeVersion": 1,
-      "position": [250, 300]
+      "position": [240, 300],
+      "id": "f3a1c2d4-e5b6-4789-abcd-1234567890ab",
+      "webhookId": "d7e8f9a0-b1c2-4d3e-8f4a-567890abcdef",
+      "credentials": {
+        "telegramApi": {
+          "id": "Qgo6JMjVTBMRAbKh",
+          "name": "Telegram account"
+        }
+      }
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "(SELECT name, occupancy_pct, num_bikes_available, num_docks_available FROM v_station_occupancy ORDER BY occupancy_pct ASC LIMIT 10) UNION ALL (SELECT name, occupancy_pct, num_bikes_available, num_docks_available FROM v_station_occupancy ORDER BY occupancy_pct DESC LIMIT 10);"
+        "query": "SELECT s.name, s.commune, s.capacity, vo.num_bikes_available, vo.num_docks_available, vo.mechanical_available, vo.ebike_available, vo.occupancy_pct FROM v_station_occupancy vo JOIN stations s ON s.station_id = vo.station_id ORDER BY vo.occupancy_pct ASC LIMIT 20;",
+        "options": {}
       },
       "name": "Données Stations",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [480, 300]
+      "position": [480, 300],
+      "id": "a2b3c4d5-e6f7-4890-bcde-234567890abc",
+      "credentials": {
+        "postgres": {
+          "id": "7sFMAYG2cRFTXj2Q",
+          "name": "Postgres account"
+        }
+      }
     },
     {
       "parameters": {
@@ -30,39 +47,117 @@
             {
               "name": "Authorization",
               "value": "Bearer wYcLh1ETugZychfun5DdLS5oDnxssUWU"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({model:'mistral-small-latest',messages:[{role:'system',content:'Tu es un assistant expert des stations Vélib à Paris. Réponds en français de manière concise. Utilise des emojis. Données: ' + JSON.stringify($('Données Stations').all().map(function(i){return i.json}))},{role:'user',content:$('Telegram Trigger').item.json.message.text}]}) }}"
+        "jsonBody": "={{ JSON.stringify({ model: 'mistral-small-latest', messages: [ { role: 'system', content: 'Tu es un assistant expert des stations Velib-Metropole a Paris. Tu aides l equipe logistique a anticiper les rééquilibrages. Reponds toujours en francais, de maniere concise. Utilise des emojis. Voici les donnees actuelles des 20 stations les plus vides : ' + JSON.stringify($('Données Stations').all().map(function(i){ return i.json; })) }, { role: 'user', content: $('Telegram Trigger').item.json.message.text } ] }) }}"
       },
       "name": "Mistral LLM",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [700, 300]
+      "position": [720, 300],
+      "id": "b3c4d5e6-f7a8-4901-cdef-34567890abcd"
     },
     {
       "parameters": {
         "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
-        "text": "=🤖 Assistant Vélib\n\n{{ $json.choices[0].message.content }}"
+        "text": "=🤖 Assistant Vélib\n\n{{ $json.choices[0].message.content }}",
+        "additionalFields": {
+          "parse_mode": "None"
+        }
       },
       "name": "Réponse Telegram",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
-      "position": [920, 300]
+      "position": [960, 300],
+      "id": "c4d5e6f7-a8b9-4012-defa-4567890abcde",
+      "credentials": {
+        "telegramApi": {
+          "id": "Qgo6JMjVTBMRAbKh",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=❌ Erreur lors de la génération de la réponse. Réessaie dans un instant.",
+        "additionalFields": {
+          "parse_mode": "None"
+        }
+      },
+      "name": "Réponse Erreur",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [960, 480],
+      "id": "d5e6f7a8-b9c0-4123-efab-567890abcdef",
+      "credentials": {
+        "telegramApi": {
+          "id": "Qgo6JMjVTBMRAbKh",
+          "name": "Telegram account"
+        }
+      }
     }
   ],
   "connections": {
     "Telegram Trigger": {
-      "main": [[{ "node": "Données Stations", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Données Stations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Données Stations": {
-      "main": [[{ "node": "Mistral LLM", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Mistral LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Mistral LLM": {
-      "main": [[{ "node": "Réponse Telegram", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Réponse Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "Réponse Erreur",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": ""
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "700682f1f689ed17217dbd33ab92b26c984b7e4d21d42e88954492667708274c"
+  },
+  "id": "LLMChatbotVelib01",
+  "tags": []
 }
