@@ -1,0 +1,158 @@
+{
+  "name": "Chatbot Vélib LLM",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "9f6a3129-481f-432e-a858-25a8fa634270",
+      "webhookId": "d7e8f9a0-b1c2-4d3e-8f4a-567890abcdef",
+      "credentials": {
+        "telegramApi": {
+          "id": "OsU4Tpru3NhGlazi",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT s.name, s.commune, s.capacity, vo.num_bikes_available, vo.num_docks_available, vo.mechanical_available, vo.ebike_available, vo.occupancy_pct FROM v_station_occupancy vo JOIN stations s ON s.station_id = vo.station_id ORDER BY vo.occupancy_pct DESC LIMIT 20;",
+        "options": {}
+      },
+      "name": "Données Stations",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "id": "d3e2d856-d2d5-4e3c-8d29-7f07d376eaa5",
+      "credentials": {
+        "postgres": {
+          "id": "ulN7XAw08rOX0pBw",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "mistralCloudApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'mistral-small-latest', messages: [ { role: 'system', content: 'Tu es un assistant expert des stations Velib-Metropole a Paris. Tu aides l equipe logistique a anticiper les rééquilibrages. Reponds toujours en francais, de maniere concise. Utilise des emojis. Voici les donnees actuelles des 20 stations les plus vides : ' + JSON.stringify($('Données Stations').all().map(function(i){ return i.json; })) }, { role: 'user', content: $('Telegram Trigger').item.json.message.text } ] }) }}",
+        "options": {}
+      },
+      "name": "Mistral LLM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        480,
+        0
+      ],
+      "id": "89cdd711-080c-4a57-baa6-fa48beb71d0e",
+      "retryOnFail": true,
+      "credentials": {
+        "mistralCloudApi": {
+          "id": "PQU5zy3PMkktm9p7",
+          "name": "Mistral Cloud account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=🤖 Assistant Vélib\n\n{{ $json.choices[0].message.content }}",
+        "additionalFields": {
+          "parse_mode": "None"
+        }
+      },
+      "name": "Réponse Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        720,
+        0
+      ],
+      "id": "9dd3a210-509a-4480-84e1-8724ca35b810",
+      "webhookId": "6d2bf20a-d981-40fc-b34f-17cbfb32d5b6",
+      "executeOnce": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "OsU4Tpru3NhGlazi",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Données Stations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Données Stations": {
+      "main": [
+        [
+          {
+            "node": "Mistral LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mistral LLM": {
+      "main": [
+        [
+          {
+            "node": "Réponse Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "4328ecf7-4f6b-4eea-9076-d759f0cdb23a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fdeda9eee67bd358195a45b1b9d6256d8f798d5237e1205527473ad0d16c2185"
+  },
+  "id": "5FWnsCAtMQx2pnda",
+  "tags": []
+}
