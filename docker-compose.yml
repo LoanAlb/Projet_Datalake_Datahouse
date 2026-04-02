@@ -54,6 +54,31 @@ services:
       - postgres
       - minio
 
+  velib-ingestion:
+    image: python:3.12-slim
+    container_name: velib_ingestion
+    working_dir: /app
+    volumes:
+      - ./scripts:/app
+      - ./requirements.txt:/app/requirements.txt
+    environment:
+      - MINIO_ENDPOINT=minio:9000
+      - PG_HOST=velib_postgres
+    entrypoint: >
+      /bin/sh -c "
+      pip install -r requirements.txt &&
+      while true; do
+        echo '=== Ingestion start ===' &&
+        python ingest_velib.py &&
+        python load_postgres.py &&
+        echo '=== Waiting 5 min ===' &&
+        sleep 300;
+      done
+      "
+    depends_on:
+      - postgres
+      - minio
+
   metabase:
     image: metabase/metabase:latest
     container_name: velib_metabase
